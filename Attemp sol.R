@@ -36,4 +36,11 @@ Q6=mean(rgamma(10000,2326,7))
 # We use function optim to find the optimal value of Q6
 OptimRes <- optim(initVal,utility_func,Q6,gr=NULL,method=c("BFGS"),control=list(fnscale=-1),hessian=TRUE)
 
+##############################################################################
+
+# Q2
+
+source("ExamData.R")
+rm(list = ls())
+source("ExamData.R")
                   
