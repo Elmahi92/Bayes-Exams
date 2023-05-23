@@ -1,0 +1,176 @@
+---
+title: "Exam_20220817_Ali"
+author: "Mohamed Ali - Mohal954"
+date: "2023-05-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(123)
+library(LaplacesDemon)
+library(mvtnorm)
+library(ggplot2)
+source("ExamData.R")
+```
+
+# Question 1
+
+## D and E
+
+A function that computes the log posterior distribution
+
+```{r q1de,echo=T}
+logpost<- function(theta,x,n,a,b){
+  loglik<- (3*n*log(theta))-((n)*log(2))-sum(log(x^4))-(theta*sum(1/x))
+  logPrior<- (a*log(b))-log(factorial(a-1))+((a-1)*log(theta)-(b*theta))
+  return(-sum(loglik+logPrior))
+}
+
+x=c(.7,1.1,.9,1.5)
+n=length(x)
+a=4
+b=2
+theta<-seq(0.01,.9,.01)
+post_dist<-c()
+for (i in 1:length(theta)) {
+      post_dist[i]<-logpost(theta[i],x,n,a,b)
+}
+ post_plot<- data.frame(x=post_dist)
+ ggplot() +
+   geom_histogram(data=post_plot,aes(x = x,y=..density..),linetype=1,
+                  fill='#14213D')+
+   geom_density(data=post_plot,aes(x=x), color='#FCA311', size=1,
+                fill='#FCA311',alpha=.5)+
+   labs(title = "Posterior predictive distribution of theta ",
+        x = "Theta",
+        y = "Density") + theme_classic()
+ 
+ 
+
+ initVal<-rep(0,length(theta))
+OptimRes <- optim(initVal,logpost,gr=NULL,x,n,a,b,method=c("L-BFGS-B")
+                   ,control=list(fnscale=-1),hessian=TRUE,lower = 0.1)
+postmode<-as.matrix(OptimRes$par)
+
+ 
+```
+
+# Question 2
+
+## A
+
+Compute a 95% equal tail credible interval for beta_1 and interpret it
+
+```{r q2a, echo=T}
+# Drawing 20000 from the joint posterior we have 
+mu_0=rep(0,3)
+Sigma_0= 1/1e2*diag(3)
+nIter= 20000
+# Sample draw using the pre defined function
+betaSample<-BayesLogitReg(y,X,mu_0,sigma_0,nIter)$betaSample
+
+#a
+# Finding 95% CI for beta_1
+mean(betaSample[,2])
+quantile(betaSample[,2],c(.05,.95))
+```
+
+Interpretion, as we can see from the results above the value of mean beta_1 one is lay between the  Lower and Upper pounds of the CI which shows a Sig level of the beta_1.
+
+## B
+
+Compute the joint posterior probability
+
+```{r q2b, echo=T}
+#b
+# The Joint posterior probability for both beta_1 > 0 and beta_2 > 0
+
+mean(betaSample[,2]>0)
+mean(betaSample[,3]>0)
+
+```
+
+
+## C
+Plot the posterior distribution
+
+```{r q2c, echo=T}
+#c
+# We define the p_i as exp(b0+b1x1+b2x2)/1+ exp(b0+b1x1+b2x2
+# Frist we define our new x
+plot_fun<-function(intrcpt,x1,x2){
+      X_new<-c(intrcpt,x1,x2)
+      pr<-exp(betaSample%*%X_new)
+      pi<- pr/(1+(pr))
+      plot_data<- data.frame(x=pi,y=((1-pi)/pi))
+      ggplot() +
+        geom_histogram(data=plot_data,aes(x = x,y=..density..),linetype=1,
+                       fill='#14213D')+
+        geom_density(data=plot_data,aes(x=x), color='#FCA311', size=1,
+                     fill='#FCA311',alpha=.5)+
+        labs(title = "Posterior predictive distribution ",
+             x = "Probs",
+             y = "Density") + theme_classic()
+}
+
+## Example with the given data 
+plot_fun(1,5,1)
+
+## another example with different data
+plot_fun(1,49,1)
+
+```
+
+As we can see from the both plots the calculating the probability for this bridge could be a litil bit tricky as it's not a full reliable, we can see that the values of the number of years since the bridge been construct have a mean value of 49 which make the new input value a bit unrealistic with our model data. thus the results we get is not resalable and we might need to question the rilability of this bridge data.  
+
+## D
+
+Plot the lower and upper limits of the posterior probability intervals as a function of x1
+
+```{r q2d, echo=T}
+simx_new<-as.matrix(data.frame(const=1,x1=seq(min(X[,2]),max(X[,2]),.1),x2=0))
+pred<-betaSample%*%t(simx_new)
+pi<-exp(pred)/1+exp(pred)
+lower<-c()
+upper<-c()
+for(i in 1:ncol(pi)){
+  upper[i]<-quantile(pi[,i],.95)
+  lower[i]<-quantile(pi[,i],.05)
+}
+
+plt_df<- data.frame(x=seq(min(X[,2]),max(X[,2]),.1),CI_lower=lower,CI_upper=upper)
+
+plt <- ggplot(plt_df,aes(x=x)) +
+   geom_ribbon(aes(ymin = CI_lower, ymax = CI_upper)
+              , alpha = 0.8,fill = "#EDC948")+
+  labs(x = 'X grid', y = ' '
+  ,title =' the lower and upper limits of the posterior probability intervals'
+  ,color = "Line Legend")+
+  theme(legend.position="bottom")
+plt
+```
+
+## E
+
+Consider a 40-year-old bridge i that was built using the certain technology. Plot the posterior distribution of pi and compute the posterior probability.
+
+```{r q2e, echo=T}
+plot_fun(1,40,1)
+paste0("The posterior distribution of pi and compute the posterior probability that pi > 0.5 is  ,",round(mean(pi>.5),3))
+```
+
+# Question 3
+
+
+```{r q3c, echo=T}
+#Solution based on simulation
+
+theta_new<-rbeta(1,38,22)
+uti_buy<- 60*theta_new-20*(1-theta_new)
+paste0("Utility Fucntion for day 51 buy ",round(uti_buy,3))
+uti_notbuy<- 180*theta_new-240*(1-theta_new)
+paste0("Utility Fucntion for day 51 not buy ",round(uti_notbuy,3))
+```
+
+Thus the company should not buy.

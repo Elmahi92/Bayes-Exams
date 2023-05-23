@@ -1,46 +1,76 @@
-library(ggplot2)
-#### Question A ####
-# In this question we have alpha = 2326 and beta = 7
-# We use the rgamma function to generate the 10000 draws by spesifiny n ) 10000 and 
-# And shape = alpha and Scale = Beta.
-rand_var<-data.frame(x=rgamma(10000,2326,7))
-# We plote the our histogram:
-ggplot() +
-  geom_histogram(data=rand_var,aes(x = x,y=..density..),linetype=1,
-                 fill='#14213D')+
-  geom_density(data=rand_var,aes(x=x), color='#FCA311', size=1,
-               fill='#FCA311',alpha=.5)+
-  labs(title = "Posterior predictive distribution",
-       subtitle = " of the demanded quantity in the next month",
-       x = "Demanded",
-       y = "Density") + theme_classic()
+y=y
+X=X
+mu_0=rep(0,14)
+Omega_0=1e2*diag(14)
+v_0=1
+sigma2_0=4^2
+nIter=10000
 
-# Given the info we have from the alpha and beta values we can plug this into the function pgamma
-# which gives the pgamma gives the distribution function and then we find the complement probability 
-q6= 350
-# the complement probability
-1-pgamma(q6,2326,7)
+## model
+BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)
+beta_val<- BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)$betaSample
+## A
 
-# Given from the example help file 
-utility_func <- function(a,Q6){
-  util = rep(0,length(Q6))
-  util[Q6<=a] = 15*Q6[Q6<=a]-(a-Q6[Q6<=a])
-  util[Q6>a] = 15*a-0.1*(Q6[Q6>a]-a)^2
-  return(util)
+
+for (i  in 1:ncol(X)) {
+  print(paste0("The 95% lower CI for beta_",i-1," is ", round(quantile(beta_val[,i],c(.05)),3), " and Upper CI is ",round(quantile(beta_val[,i],c(.95)),3)))
 }
 
-# We define the inital value we have 
-initVal=0
-# We define the value of Q6 by taking the mean of the 10000 gnerated values 
-Q6=mean(rgamma(10000,2326,7))
-# We use function optim to find the optimal value of Q6
-OptimRes <- optim(initVal,utility_func,Q6,gr=NULL,method=c("BFGS"),control=list(fnscale=-1),hessian=TRUE)
+mean(beta_val[,2])
+paste0("The 95% lower CI for beta_",i-1," is ", round(quantile(beta_val[,2],c(.05)),3), " and Upper CI is ",round(quantile(beta_val[,2],c(.95)),3))
 
-##############################################################################
+# 
 
-# Q2
+## B
+sigma2_val<- BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)$sigma2Sample
 
-source("ExamData.R")
-rm(list = ls())
-source("ExamData.R")
-                  
+#mean
+mean(sqrt(sigma2_val))
+
+#median
+median(sqrt(sigma2_val))
+
+
+## C
+
+X_new<-as.matrix(data.frame(intercept=1,crim=seq(min(X[,2]),max(X[,2]),by=.1),zn=40,indus=1.5,
+                     chas=0,nox=.5,rm=6,age=30,dis=5,rad=3,tax=300,ptratio=17,black=390,
+                     lstat=4))
+
+lower<-c()
+upper<-c()
+for (i in 1:nrow(X_new)) {
+  res<- beta_val%*%X_new[i,]
+  lower[i]<-quantile(res,c(.05))
+  upper[i]<-quantile(res,c(.95))
+}
+
+plt_data<- data.frame(x=seq(min(X[,2]),max(X[,2]),by=.1),lower=lower,upper=upper)
+
+plt <- ggplot(plt_data,aes(x=x)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper)
+              , alpha = 0.8,fill = "#EDC948")+
+  labs(x = 'x_1',title ='. Compute 95% equal tail posterior probability intervals'
+       ,color = "Line Legend") +
+  scale_color_manual(values = c("#14213D","#59A14F")
+                     , labels = c("2","3"))+
+  theme(legend.position="bottom")
+plt
+
+
+## D
+beta_val<- BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)$betaSample
+
+y_pred<-c()
+
+for (i in 1:10000) {
+  y_pred_val<-(beta_val[i,]%*%XNewHouse) + rnorm(1,mean = 0,sd=sqrt(sigma2_val[i]))
+  y_pred[i]<-y_pred_val
+}
+
+hist(y_pred)
+mean(y_pred>=20)
+
+## E
+
+

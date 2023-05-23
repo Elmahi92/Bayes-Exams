@@ -1,0 +1,234 @@
+---
+title: "Exam_20221020_Ali"
+author: "Mohamed Ali - Mohal954"
+date: "2023-05-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+source("ExamData.R")
+```
+
+# Question 1
+
+## D
+
+computes the log posterior distribution
+
+```{r q1d,echo=T}
+logpost<- function(x,N,n,a,b,theta){
+  loglike<-sum(x)*log(theta) + (n*N-sum(x))*log(1-theta)
+  logprior<- (a-1)*log(theta) + (b-1)*log(1-theta)
+  return(-(loglike+logprior))
+}
+
+x<-c(13,8,11,7)
+N=20
+a=2
+b=3
+n=1
+theta=seq(0.01,.99,.001)
+theta_val<-c()
+for (i in 1:length(theta)){
+  theta_val[i]<-logpost(x,N,n,a,b,theta[i])
+}
+
+
+plot_df<- data.frame(x=theta_val)
+
+ggplot(plot_df,aes(x = x)) +
+  geom_histogram(aes(y=..density..),linetype=1,fill='#14213D')+
+  geom_density(alpha=.2,color="#FCA311",size=1,fill="#FCA311")+
+  labs(x = 'Probabilities', y = 'density',
+       title ='Plot of the predictive distribution')
+```
+
+## E
+
+You can also embed plots, for example:
+
+```{r 1e, echo=T}
+initVal=0.5
+OptimRes <- optim(initVal,
+                  logpost,
+                  gr=NULL,
+                  N=N,
+                  x=x,
+                  a=a,
+                  b=b,
+                  n=n,
+                  method=c("L-BFGS-B"),
+                  control=list(fnscale=-1),
+                  lower = .2,
+                  hessian=TRUE)
+
+theta_val2<-dnorm(theta,mean=OptimRes$par,sd=sqrt(1/OptimRes$hessian))
+
+plot(theta_val2)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Question 2
+
+## A 
+
+Plot the posterior distribution
+
+```{r 2a, echo=T}
+a=sum(Wolves$y)+40
+b=length(Wolves$y)+2
+plt_df<-data.frame(x=rgamma(10000,a,b))
+paste0("the posterior probability is smaller than 21 = ",mean((rgamma(10000,a,b))<21))
+ggplot(plt_df,aes(x = x)) +
+  geom_histogram(aes(y=..density..),linetype=1,fill='#14213D')+
+  geom_density(alpha=.2,color="#FCA311",size=1,fill="#FCA311")+
+  labs(x = 'Probabilities', y = 'density',
+       title ='Plot of the predictive distribution')
+```
+
+## B
+
+```{r 2b, echo=T,warning=FALSE}
+###
+reg_a<- subset(Wolves,Wolves==1)
+reg_b<- subset(Wolves,Wolves==0)
+
+##### Infrance region A
+
+aa=sum(reg_a$y)+40
+ba=length(reg_a$y)+2
+plt_df<-data.frame(x=rgamma(10000,aa,ba))
+
+ggplot(plt_df,aes(x = x)) +
+  geom_histogram(aes(y=..density..),linetype=1,fill='#14213D')+
+  geom_density(alpha=.2,color="#FCA311",size=1,fill="#FCA311")+
+  labs(x = 'Probabilities', y = 'density',
+       title ='Plot of the predictive distribution')
+
+##### Infrance region B
+
+ab=sum(reg_b$y)+40
+bb=length(reg_b$y)+2
+plt_df<-data.frame(x=rgamma(10000,ab,bb))
+
+ggplot(plt_df,aes(x = x)) +
+  geom_histogram(aes(y=..density..),linetype=1,fill='#14213D')+
+  geom_density(alpha=.2,color="#FCA311",size=1,fill="#FCA311")+
+  labs(x = 'Probabilities', y = 'density',
+       title ='Plot of the predictive distribution')
+
+###### future week 
+#a
+theta_a<-rgamma(1,aa,ba)
+regp_a<-c()
+#b
+theta_b<-rgamma(1,ab,bb)
+regp_b<-c()
+
+seq_<-seq(1,1000,1)
+for (i in 1:length(seq_)) {
+  regp_a[i]<-rpois(seq_[i],theta_a)
+  regp_b[i]<-rpois(seq_[i],theta_b)
+}
+paste0("Probability that Yb>Ya is ",mean(regp_b>regp_a))
+```
+
+
+## C
+
+we can prove this by calculating the mean number of wolvs in both regons and then we can compare the delt mean between the 2 regions. 
+We can see that the avg number of wolves per week in region b is higher by 18% than region A.
+```{r 2c, echo=T}
+mean(regp_b)/mean(regp_a)-1
+```
+
+
+# Question 3
+
+## A
+
+```{r 3a, echo=T}
+y=y
+X=X
+mu_0=rep(0,14)
+Omega_0=1e2*diag(14)
+v_0=1
+sigma2_0=4^2
+nIter=10000
+
+## model
+BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)
+beta_val<- BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)$betaSample
+## A
+
+
+for (i  in 1:ncol(X)) {
+  print(paste0("The 95% lower CI for beta_",i-1," is ", round(quantile(beta_val[,i],c(.05)),3), " and Upper CI is ",round(quantile(beta_val[,i],c(.95)),3)))
+}
+
+mean(beta_val[,2])
+paste0("The 95% lower CI for beta_",i-1," is ", round(quantile(beta_val[,2],c(.05)),3), " and Upper CI is ",round(quantile(beta_val[,2],c(.95)),3))
+
+```
+the mean beat value lay between the upper and the lower CI which indecates that the beta is significat and the crim var have impact on the model.
+
+
+## B
+
+```{r 3b, echo=T}
+sigma2_val<- BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)$sigma2Sample
+
+#mean
+mean(sqrt(sigma2_val))
+
+#median
+median(sqrt(sigma2_val))
+```
+
+## C
+
+```{r 3c, echo=T}
+
+X_new<-as.matrix(data.frame(intercept=1,crim=seq(min(X[,2]),max(X[,2]),by=.1),zn=40,indus=1.5,
+                     chas=0,nox=.5,rm=6,age=30,dis=5,rad=3,tax=300,ptratio=17,black=390,
+                     lstat=4))
+
+lower<-c()
+upper<-c()
+for (i in 1:nrow(X_new)) {
+  res<- beta_val%*%X_new[i,]
+  lower[i]<-quantile(res,c(.05))
+  upper[i]<-quantile(res,c(.95))
+}
+
+plt_data<- data.frame(x=seq(min(X[,2]),max(X[,2]),by=.1),lower=lower,upper=upper)
+
+plt <- ggplot(plt_data,aes(x=x)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper)
+              , alpha = 0.8,fill = "#EDC948")+
+  labs(x = 'x_1',title ='. Compute 95% equal tail posterior probability intervals'
+       ,color = "Line Legend") +
+  scale_color_manual(values = c("#14213D","#59A14F")
+                     , labels = c("2","3"))+
+  theme(legend.position="bottom")
+plt
+```
+
+## D
+
+```{r 3d, echo=T}
+beta_val<- BayesLinReg(y, X, mu_0, Omega_0, v_0, sigma2_0, nIter)$betaSample
+
+y_pred<-c()
+
+for (i in 1:10000) {
+  y_pred_val<-(beta_val[i,]%*%XNewHouse) + rnorm(1,mean = 0,sd=sqrt(sigma2_val[i]))
+  y_pred[i]<-y_pred_val
+}
+
+hist(y_pred)
+mean(y_pred>=20)
+```
